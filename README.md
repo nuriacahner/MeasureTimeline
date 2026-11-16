@@ -7,11 +7,10 @@ and a panel lists them all.
 
 **Inspect → Measurements**
 
-| The three kinds of measurement |
-|---|
-| <img src="docs_measurements/img/distance.PNG" width="850" alt="Store Measurement: a distance along an axis"><br>**Distance.** The distance between two entities. With **Along**, only its component along an axis, line or plane, as here: 13.07 mm along the radius's X axis. Leave *Along* empty for the straight-line distance. |
-| <img src="docs_measurements/img/angle.PNG" width="850" alt="Store Measurement: an angle between two lines"><br>**Angle.** The angle between two lines, axes or planes, as here: *IR*, 11.72°. **Acute** (0–90°) is the default; **Obtuse** (90–180°) gives the other angle, the way 3-matic shows the volar tilt. |
-| <img src="docs_measurements/img/formula.PNG" width="850" alt="Store Measurement: a formula, and the Measurements panel"><br>**Formula.** A value computed from other stored measurements by their names, as here: `Inclinación volar - 90` = 5.76°. On the left, the **Measurements panel** lists every stored measurement with its value. |
+<p align="center">
+  <img src="docs_measurements/img/MeasurementsOverview.PNG" width="800"><br>
+  <em>Figure 1. Measurements Dialog Overview.</em>
+</p>
 
 ## Why
 
@@ -40,6 +39,12 @@ This add-in adds all of that, using the same measuring engine as Inspect → Mea
   - **Formula:** a value computed from other stored measurements by their names, e.g.
     `IR - Pronosupination`, `90 - Volar tilt`, `L5 / L4`, `L7 / L6 * 100`. Only numbers,
     `+ - * / ( )` and measurement names are allowed (nothing is evaluated as code).
+
+| The three kinds of measurement |
+|---|
+| <img src="docs_measurements/img/distance.PNG" width="850" alt="Store Measurement: a distance along an axis"><br>**Distance.** The distance between two entities. With **Along**, only its component along an axis, line or plane, as here: 13.07 mm along the radius's X axis. Leave *Along* empty for the straight-line distance. |
+| <img src="docs_measurements/img/angle.PNG" width="850" alt="Store Measurement: an angle between two lines"><br>**Angle.** The angle between two lines, axes or planes, as here: *IR*, 11.72°. **Acute** (0–90°) is the default; **Obtuse** (90–180°) gives the other angle, the way 3-matic shows the volar tilt. |
+| <img src="docs_measurements/img/formula.PNG" width="850" alt="Store Measurement: a formula, and the Measurements panel"><br>**Formula.** A value computed from other stored measurements by their names, as here: `Inclinación volar - 90` = 5.76°. On the left, the **Measurements panel** lists every stored measurement with its value. |
 
   Each measurement becomes a **custom feature in the timeline**, named `label = value`. It
   depends on the measured entities, so Fusion recomputes it whenever the model changes,
