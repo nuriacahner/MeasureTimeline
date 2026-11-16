@@ -27,7 +27,7 @@ This add-in adds all of that, using the same measuring engine as Inspect → Mea
 
 ## What it does
 
-- **Store Measurement** ("+ New" in the panel): pick two entities, as in Inspect → Measure
+- **Store Measurement** ("+ New" in the panel): pick two entities (can be selected from the Project Browser or the 3D Workspace) as in Inspect → Measure
   (faces, edges, vertices, bodies, sketch geometry, construction planes, axes and points).
   - **Distance:** the minimum distance. Optionally **Along** an axis, line or plane: only
     the component along that direction (along a plane's normal), like 3-matic's "measure
@@ -50,18 +50,18 @@ This add-in adds all of that, using the same measuring engine as Inspect → Mea
   depends on the measured entities, so Fusion recomputes it whenever the model changes,
   including when the document is opened.
 - **Measurements panel:**
-  - lists every stored measurement with its value;
-  - a **show** box per measurement, plus a master switch;
+  - Lists every stored measurement with its value;
+  - A **show** box per measurement, plus a master switch;
   - **Place** (move its drawing), **✎ Edit** (change its entities, *Along*, formula,
     name or acute / obtuse, keeping its place in the timeline), **Delete** and **+ New**;
-  - selecting a row lists the entities it was measured between: click one to select it in
+  - Selecting a row lists the entities it was measured between: click one to select it in
     the design.
 - **Drawing, 3-matic style:**
-  - a distance as an orange line between the two closest points;
-  - its measured entities: planes as translucent green panels, axes and lines in blue,
+  - A distance as an orange line between the two closest points;
+  - Its measured entities: planes as translucent green panels, axes and lines in blue,
     points as blue dots;
-  - an angle as its two orange legs and the arc between them;
-  - the value in a label that always faces you and keeps its size on screen.
+  - An angle as its two orange legs and the arc between them;
+  - The value in a label that always faces you and keeps its size on screen.
 
   **Place Measurement** (double-click the feature, or Place in the panel) moves the drawing
   where it's easiest to read. The drawing is not part of the model.
@@ -117,9 +117,9 @@ No extra Python packages are needed.
 
 There are no offline tests yet. The add-in was tested inside Fusion, in throwaway
 documents, on measurements with known answers:
-- distances, *Along* and formulas;
-- editing each kind of measurement;
-- removing the drawings before a save and redrawing them after.
+- Distances, *Along* and formulas;
+- Editing each kind of measurement;
+- Removing the drawings before a save and redrawing them after.
 
 ## Known limits
 
