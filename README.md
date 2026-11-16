@@ -9,9 +9,9 @@ and a panel lists them all.
 
 | | |
 |---|---|
-| <img src="docs_measurements/img/distance.PNG" width="550" alt="Store Measurement: a distance along an axis"> | **Distance.** The distance between two entities. With **Along**, only its component along an axis, line or plane, as here: *L6*, 13.07 mm along the radius's X axis. Leave *Along* empty for the straight-line distance. |
-| <img src="docs_measurements/img/angle.PNG" width="550" alt="Store Measurement: an angle between two lines"> | **Angle.** The angle between two lines, axes or planes, as here: *IR*, 11.72°. **Acute** (0–90°) is the default; **Obtuse** (90–180°) gives the other angle, the way 3-matic shows the volar tilt. |
-| <img src="docs_measurements/img/formula.PNG" width="550" alt="Store Measurement: a formula, and the Measurements panel"> | **Formula.** A value computed from other stored measurements by their names, as here: `Inclinación volar - 90` = 5.76°. On the left, the **Measurements panel** lists every stored measurement with its value. |
+| <img src="docs_measurements/img/distance.PNG" width="3000" alt="Store Measurement: a distance along an axis"> | **Distance.** The distance between two entities. With **Along**, only its component along an axis, line or plane, as here: *L6*, 13.07 mm along the radius's X axis. Leave *Along* empty for the straight-line distance. |
+| <img src="docs_measurements/img/angle.PNG" width="3000" alt="Store Measurement: an angle between two lines"> | **Angle.** The angle between two lines, axes or planes, as here: *IR*, 11.72°. **Acute** (0–90°) is the default; **Obtuse** (90–180°) gives the other angle, the way 3-matic shows the volar tilt. |
+| <img src="docs_measurements/img/formula.PNG" width="3000" alt="Store Measurement: a formula, and the Measurements panel"> | **Formula.** A value computed from other stored measurements by their names, as here: `Inclinación volar - 90` = 5.76°. On the left, the **Measurements panel** lists every stored measurement with its value. |
 
 ## Why
 
