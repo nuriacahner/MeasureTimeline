@@ -12,10 +12,10 @@ and a panel lists them all.
 Fusion's Inspect → Measure gives a value and forgets it. Reproducing a radiological
 measurement protocol (radial inclination, volar tilt, ulnar variance, radial height,
 carpal height ratios, etc.) needs more:
-- the measurements kept with the design;
-- the measurements recomputed after every change;
-- each one showing what it was measured between;
-- some values that are only a component of a distance ("measure along X only"), or a
+- The measurements kept with the design;
+- The measurements recomputed after every change;
+- Each one showing what it was measured between;
+- Some values that are only a component of a distance ("measure along X only"), or a
   combination of other values.
 
 This add-in adds all of that, using the same measuring engine as Inspect → Measure.
