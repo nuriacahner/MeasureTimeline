@@ -1,6 +1,6 @@
 # Measurements in the timeline (MeasureTimeline)
 
-A Fusion add-in that **stores measurements in the timeline**. Each one is a distance, an
+A Fusion 360 add-in that **stores measurements in the timeline**. Each one is a distance, an
 angle or a formula between entities of your design, and it **updates by itself** when the
 model changes. Stored measurements are drawn in the viewport the way 3-matic shows them,
 and a panel lists them all.
