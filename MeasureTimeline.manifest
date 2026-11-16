@@ -1,0 +1,13 @@
+{
+    "autodeskProduct": "Fusion360",
+    "type": "addin",
+    "id": "3f7a9c2e-1b84-4d6a-9e05-c8d2b4a7f136",
+    "author": "Núria Cahner",
+    "description": {
+        "": "Store distances and angles measured with Fusion's measuring engine as features in the timeline. They show their value and update when the model changes."
+    },
+    "version": "0.12.0",
+    "runOnStartup": true,
+    "supportedOS": "windows|mac",
+    "editEnabled": true
+}
