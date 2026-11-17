@@ -17,9 +17,9 @@ and a panel lists them all.
 Fusion's Inspect → Measure gives a value and forgets it. Reproducing a radiological
 measurement protocol (radial inclination, volar tilt, ulnar variance, radial height,
 carpal height ratios, etc.) needs more:
-- The measurements kept with the design;
-- The measurements recomputed after every change;
-- Each one showing what it was measured between;
+- The measurements kept with the design
+- The measurements recomputed after every change
+- Each one showing what it was measured between
 - Some values that are only a component of a distance ("measure along X only"), or a
   combination of other values.
 
@@ -30,7 +30,7 @@ This add-in adds all of that, using the same measuring engine as Inspect → Mea
 - **Store Measurement** ("+ New" in the panel): pick two entities (can be selected from the Project Browser or the 3D Workspace) as in Inspect → Measure
   (faces, edges, vertices, bodies, sketch geometry, construction planes, axes and points).
   - **Distance:** the minimum distance. Optionally **Along** an axis, line or plane: only
-    the component along that direction (along a plane's normal), like 3-matic's "measure
+    the component along that direction (if a plane is selected along a its normal), like 3-matic's "measure
     X / Y / Z only" in a user coordinate system.
   - **Angle:** the angle between lines and planes.
     - **Acute (0–90°)** is the default.
