@@ -6,7 +6,7 @@
     "description": {
         "": "Store distances and angles measured with Fusion's measuring engine as features in the timeline. They show their value and update when the model changes."
     },
-    "version": "0.12.0",
+    "version": "0.13.0",
     "runOnStartup": true,
     "supportedOS": "windows|mac",
     "editEnabled": true

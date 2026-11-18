@@ -35,6 +35,8 @@ EDIT_CMD_ID = 'MeasureTimeline_Place'       # the custom feature's edit command 
 PALETTE_ID = 'MeasureTimeline_Palette'      # the Measurements panel (= the shell's)
 PLACE_GROUP = 'MeasureTimeline_place'       # the placing command's moving drawing
 SHOW_ALL_ATTR = 'showAll'                   # design attribute: '0' = Show Measurements off
+FOLDERS_ATTR = 'folders'                    # design attribute: JSON list of folder names, in order
+FOLDER_NAME_MAX = 60
 ATTR_GROUP = 'MeasureTimeline'
 ATTR_NAME = 'measurement'
 KIND_DISTANCE = 'Distance'
@@ -562,10 +564,112 @@ def _feature(design, token):
     return f if f and record_of(f) else None
 
 
+# --- folders (v0.13, 2026-11-18): the panel groups measurements in folders --------- #
+# A measurement's folder is its record's 'folder' (name; absent = no folder). The design
+# keeps the list of folders (FOLDERS_ATTR), so empty folders and their order survive.
+# Folders only organise the panel: the timeline is not touched. Opening / closing a
+# folder is kept in the panel page, not in the design (it would mark it modified).
+
+def _all_measurements(design):
+    """(feature, record) of every measurement in the timeline, rolled back or not."""
+    rows = []
+    for item in design.timeline:
+        f = adsk.fusion.CustomFeature.cast(item.entity) if item.entity else None
+        rec = record_of(f) if f else None
+        if rec:
+            rows.append((f, rec))
+    return rows
+
+
+def folders(design):
+    """Folder names in order: the stored list, plus any a measurement still names."""
+    a = design.attributes.itemByName(ATTR_GROUP, FOLDERS_ATTR)
+    try:
+        names = [n for n in json.loads(a.value) if isinstance(n, str) and n] if a else []
+    except Exception:
+        names = []
+    for _f, rec in _all_measurements(design):
+        n = rec.get('folder')
+        if n and n not in names:
+            names.append(n)
+    return names
+
+
+def _save_folders(design, names):
+    a = design.attributes.itemByName(ATTR_GROUP, FOLDERS_ATTR)
+    if a:
+        a.value = json.dumps(names)
+    else:
+        design.attributes.add(ATTR_GROUP, FOLDERS_ATTR, json.dumps(names))
+
+
+def _folder_name(raw):
+    """A clean folder name: spaces trimmed and collapsed, at most FOLDER_NAME_MAX."""
+    return ' '.join(str(raw or '').split())[:FOLDER_NAME_MAX]
+
+
+def set_folder(feature, name):
+    rec = record_of(feature)
+    if name:
+        rec['folder'] = name
+    else:
+        rec.pop('folder', None)
+    _write_record(feature, rec)
+
+
+def new_folder(design, raw):
+    """Add a folder at the end. Returns (name, error)."""
+    name = _folder_name(raw)
+    if not name:
+        return None, 'Give the folder a name.'
+    names = folders(design)
+    if name in names:
+        return name, None                       # already there: fine, use it
+    _save_folders(design, names + [name])
+    return name, None
+
+
+def rename_folder(design, old, raw):
+    name = _folder_name(raw)
+    names = folders(design)
+    if not name:
+        return 'Give the folder a name.'
+    if name == old:
+        return None
+    if name in names:
+        return 'There is already a folder called "%s".' % name
+    _save_folders(design, [name if n == old else n for n in names])
+    for f, rec in _all_measurements(design):
+        if rec.get('folder') == old:
+            set_folder(f, name)
+    return None
+
+
+def delete_folder(design, name):
+    """Remove the folder; its measurements stay, without a folder."""
+    for f, rec in _all_measurements(design):
+        if rec.get('folder') == name:
+            set_folder(f, None)
+    _save_folders(design, [n for n in folders(design) if n != name])
+
+
+def _set_pending_folder(name):
+    _state().pending_folder = (name, time.time()) if name else None
+
+
+def _take_pending_folder():
+    """The folder whose "+" opened Store Measurement, if fresh; used once."""
+    pf = getattr(_state(), 'pending_folder', None)
+    _state().pending_folder = None
+    if pf and time.time() - pf[1] < PENDING_EDIT_S:
+        return pf[0]
+    return None
+
+
 def palette_state(app):
     des = adsk.fusion.Design.cast(app.activeProduct)
     if not des:
-        return {'doc': None, 'master': False, 'rows': []}
+        return {'doc': None, 'master': False, 'rows': [], 'folders': []}
     rows = []
     for item in des.timeline:
         f = adsk.fusion.CustomFeature.cast(item.entity) if item.entity else None
@@ -582,10 +686,11 @@ def palette_state(app):
                      'value': '?' if value is None else format_value(rec['kind'], value, rec.get('unit')),
                      'along': rec.get('along'), 'expr': rec.get('expr'), 'shown': is_shown_rec(rec),
                      'off': bool(item.isRolledBack or item.isSuppressed), 'broken': broken,
-                     'obtuse': bool(rec.get('obtuse')), 'parts': measurement_parts(f, rec)})
+                     'obtuse': bool(rec.get('obtuse')), 'parts': measurement_parts(f, rec),
+                     'folder': rec.get('folder') or ''})
     sel = selected_measurement(app.userInterface)
     return {'doc': app.activeDocument.name, 'master': show_all_on(des), 'rows': rows,
-            'selected': sel.entityToken if sel else None}
+            'folders': folders(des), 'selected': sel.entityToken if sel else None}
 
 
 PANEL_MIN_W = 150       # narrower than this counts as collapsed
@@ -628,6 +733,7 @@ def on_palette_message(app, action, data):
     des = adsk.fusion.Design.cast(app.activeProduct)
     d = json.loads(data) if data else {}
     f = _feature(des, d.get('token')) if des else None
+    message = None
     if des and action == 'master':
         set_show_all(des, bool(d.get('on')))
         if d.get('on'):
@@ -664,8 +770,34 @@ def on_palette_message(app, action, data):
         ui.commandDefinitions.itemById(STORE_CMD_ID).execute()
     elif action == 'new':
         _set_pending_edit(None)
+        _set_pending_folder(_folder_name(d.get('folder')) or None)     # "+" on a folder
         ui.commandDefinitions.itemById(STORE_CMD_ID).execute()
-    return json.dumps(palette_state(app))
+    elif des and action == 'folder_new':
+        name, message = new_folder(des, d.get('name'))
+        if f and name:                          # "New folder…" from a row's move menu
+            set_folder(f, name)
+    elif des and action == 'folder_rename':
+        message = rename_folder(des, d.get('name'), d.get('to'))
+        if not message:
+            update_formulas(des)
+    elif des and action == 'folder_delete':
+        delete_folder(des, d.get('name'))
+    elif f and action == 'move':
+        name = _folder_name(d.get('folder'))
+        if name and name not in folders(des):
+            new_folder(des, name)
+        set_folder(f, name or None)
+    elif des and action == 'folder_show':
+        # the folder's box: show or hide all its drawable measurements at once
+        for g, rec in _all_measurements(des):
+            if rec.get('folder') == d.get('name') and rec['kind'] != KIND_FORMULA:
+                rec['shown'] = bool(d.get('shown'))
+                _write_record(g, rec)
+        draw_all(app)
+    state = palette_state(app)
+    if message:
+        state['message'] = message
+    return json.dumps(state)
 
 
 def on_document_activated(app, show_all_control=None):
@@ -807,11 +939,20 @@ def on_created(app, cmd):
     inputs.addTextBoxCommandInput('value', 'Value', 'Select two entities.', 1, True)
     inputs.addStringValueInput('editing', 'editing', '').isVisible = False
     cmd.okButtonText = 'Store in timeline'
+    # "+" on a folder in the panel: the new measurement goes into that folder
+    folder = _take_pending_folder()
+    inputs.addStringValueInput('folder', 'folder', folder or '').isVisible = False
+    if folder:
+        inputs.addTextBoxCommandInput('folder_note', 'Folder', folder, 1, True)
     # the panel's ✎ left a note naming the measurement to edit
     token = _take_pending_edit()
     f = _feature(adsk.fusion.Design.cast(app.activeProduct), token) if token else None
     if f is not None:
         _start_edit(app, cmd, f)
+        inputs.itemById('folder').value = ''           # editing never moves it
+        note = inputs.itemById('folder_note')
+        if note:
+            note.isVisible = False
 
 
 # --------------------------------------------------------------------------- #
@@ -1049,10 +1190,13 @@ def on_execute(app, cmd, definition):
         return
     label = inputs.itemById('label').value.strip()
     if _kind(inputs) == KIND_FORMULA:
-        store_formula(app, definition, label, inputs.itemById('expr').value.strip())
-        return
-    store(app, definition, _kind(inputs), label,
-          _picked(inputs, 'a'), _picked(inputs, 'b'), _along_input(inputs), _obtuse(inputs))
+        f = store_formula(app, definition, label, inputs.itemById('expr').value.strip())
+    else:
+        f = store(app, definition, _kind(inputs), label,
+                  _picked(inputs, 'a'), _picked(inputs, 'b'), _along_input(inputs), _obtuse(inputs))
+    folder = inputs.itemById('folder')
+    if folder is not None and folder.value:     # opened with "+" on a folder
+        set_folder(f, folder.value)
 
 
 # --------------------------------------------------------------------------- #

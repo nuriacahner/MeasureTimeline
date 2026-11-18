@@ -43,6 +43,21 @@
   .part:hover .what { color: var(--accent); text-decoration: underline; }
   .part .role { color: var(--muted); width: 46px; flex: none; }
   .part .what { word-break: break-word; }
+  /* folders (v0.13) */
+  .folder { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: #f5f5f5;
+            border-bottom: 1px solid var(--line); font-weight: 600; }
+  .folder.drop { background: #e3f1fb; outline: 2px dashed var(--accent); outline-offset: -2px; }
+  .folder .caret { width: 14px; cursor: pointer; color: var(--muted); user-select: none; }
+  .folder .fname { flex: 1; min-width: 0; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .folder .count { color: var(--muted); font-weight: 400; }
+  .folder.loose { background: #fafafa; color: var(--muted); font-weight: 400; font-style: italic; }
+  .in-folder { padding-left: 26px; }
+  .in-folder.selected { padding-left: 23px; }
+  .row.dragging { opacity: 0.4; }
+  .inline { display: flex; gap: 4px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line);
+            background: var(--hover); }
+  .inline input[type=text], .inline select { flex: 1; min-width: 0; font: inherit; padding: 2px 4px; }
+  .message { padding: 4px 10px; color: var(--danger); font-size: 11px; }
 </style>
 </head>
 <body>
@@ -50,9 +65,11 @@
     <label title="Draw the ticked measurements in the model (saved with the design)">
       <input type="checkbox" id="master"> Show in model
     </label>
+    <button id="newfolder" title="Make a folder to group measurements">+ Folder</button>
     <button class="primary" id="new" title="Store a new measurement (angle or distance)">+ New</button>
   </div>
   <div class="doc" id="doc"></div>
+  <div class="message" id="message"></div>
   <div id="list"></div>
 
 <script>
@@ -61,6 +78,14 @@
   // adsk.fusionSendData(action, json), which returns a Promise of the new state.
   var state = null;
   var sureToken = null;           // the row whose Delete was clicked once
+  // folders (v0.13): kept here, not in the design, so opening / closing one doesn't mark
+  // the design modified
+  var collapsed = {};             // doc + '|' + folder -> true
+  var sureFolder = null;          // the folder whose ✕ was clicked once
+  var renaming = null;            // the folder being renamed
+  var creating = false;           // the "+ Folder" box is open
+  var moveToken = null;           // the row whose ⇄ menu is open
+  var dragToken = null;           // the row being dragged
 
   function send(action, data) {
     try {
@@ -80,19 +105,158 @@
     return e;
   }
 
+  // a one-line text box with OK / Cancel (new folder, rename, new folder from ⇄)
+  function inlineInput(placeholder, value, okText, onOk, onCancel) {
+    var box = el('div', 'inline');
+    var inp = el('input'); inp.type = 'text'; inp.placeholder = placeholder; inp.value = value || '';
+    inp.maxLength = 60;
+    var ok = el('button', 'primary', okText);
+    var cancel = el('button', '', 'Cancel');
+    ok.onclick = function () { onOk(inp.value); };
+    cancel.onclick = onCancel;
+    inp.onkeydown = function (e) {
+      if (e.key === 'Enter') { onOk(inp.value); }
+      if (e.key === 'Escape') { onCancel(); }
+    };
+    box.appendChild(inp); box.appendChild(ok); box.appendChild(cancel);
+    setTimeout(function () { inp.focus(); inp.select(); }, 0);
+    return box;
+  }
+
+  function dropTarget(node, folder) {
+    node.ondragover = function (e) { if (dragToken) { e.preventDefault(); node.classList.add('drop'); } };
+    node.ondragleave = function () { node.classList.remove('drop'); };
+    node.ondrop = function (e) {
+      e.preventDefault(); node.classList.remove('drop');
+      if (dragToken) { var t = dragToken; dragToken = null; send('move', { token: t, folder: folder }); }
+    };
+  }
+
+  function folderHeader(s, name, rows, list) {
+    var key = s.doc + '|' + name;
+    var open = !collapsed[key];
+    var head = el('div', 'folder');
+    var caret = el('span', 'caret', open ? '▾' : '▸');
+    caret.title = open ? 'Close the folder' : 'Open the folder';
+    caret.onclick = function () { collapsed[key] = open; render(state); };
+    head.appendChild(caret);
+    // one box for the folder: shows / hides all its measurements that can be drawn
+    var drawable = rows.filter(function (r) { return r.kind !== 'Formula'; });
+    var cb = el('input'); cb.type = 'checkbox';
+    var nShown = drawable.filter(function (r) { return r.shown; }).length;
+    cb.checked = drawable.length > 0 && nShown === drawable.length;
+    cb.indeterminate = nShown > 0 && nShown < drawable.length;
+    cb.title = 'Show or hide every measurement in this folder';
+    cb.onchange = function () { send('folder_show', { name: name, shown: cb.checked }); };
+    if (!drawable.length) { cb.style.visibility = 'hidden'; }
+    head.appendChild(cb);
+    if (renaming === name) {
+      list.appendChild(head);
+      list.appendChild(inlineInput('Folder name', name, 'Rename',
+        function (v) { renaming = null; send('folder_rename', { name: name, to: v }); },
+        function () { renaming = null; render(state); }));
+      return;
+    }
+    var fname = el('span', 'fname', '📁 ' + name);
+    fname.title = open ? 'Close the folder' : 'Open the folder';
+    fname.onclick = caret.onclick;
+    head.appendChild(fname);
+    head.appendChild(el('span', 'count', String(rows.length)));
+    var tools = el('div', 'tools');
+    var add = el('button', '', '+');
+    add.title = 'Store a new measurement in this folder';
+    add.onclick = function () { send('new', { folder: name }); };
+    tools.appendChild(add);
+    var ren = el('button', '', '✎');
+    ren.title = 'Rename the folder';
+    ren.onclick = function () { renaming = name; render(state); };
+    tools.appendChild(ren);
+    var del = el('button', sureFolder === name ? 'sure' : '', sureFolder === name ? 'Sure?' : '✕');
+    del.title = 'Delete the folder (click twice). Its measurements are kept, outside any folder.';
+    del.onclick = function () {
+      if (sureFolder === name) { sureFolder = null; send('folder_delete', { name: name }); }
+      else { sureFolder = name; render(state); }
+    };
+    tools.appendChild(del);
+    head.appendChild(tools);
+    dropTarget(head, name);
+    list.appendChild(head);
+  }
+
+  function moveMenu(s, r, list) {
+    if (moveToken === 'new:' + r.token) {
+      list.appendChild(inlineInput('New folder name', '', 'Create',
+        function (v) { moveToken = null; send('folder_new', { name: v, token: r.token }); },
+        function () { moveToken = null; render(state); }));
+      return;
+    }
+    var box = el('div', 'inline');
+    var sel = el('select');
+    var opts = [['', '— No folder —']].concat(s.folders.map(function (n) { return [n, n]; }))
+               .concat([['__new__', 'New folder…']]);
+    opts.forEach(function (o) {
+      var op = el('option', '', o[1]); op.value = o[0];
+      if (o[0] === (r.folder || '')) op.selected = true;
+      sel.appendChild(op);
+    });
+    sel.onchange = function () {
+      if (sel.value === '__new__') { moveToken = 'new:' + r.token; render(state); return; }
+      moveToken = null; send('move', { token: r.token, folder: sel.value });
+    };
+    var cancel = el('button', '', 'Cancel');
+    cancel.onclick = function () { moveToken = null; render(state); };
+    box.appendChild(el('span', '', 'Move to'));
+    box.appendChild(sel); box.appendChild(cancel);
+    list.appendChild(box);
+  }
+
   function render(s) {
     state = s;
+    if (!s.folders) s.folders = [];
     document.getElementById('master').checked = !!s.master;
     document.getElementById('doc').textContent = s.doc ? s.doc : '';
+    document.getElementById('message').textContent = s.message || '';
     var list = document.getElementById('list');
     list.innerHTML = '';
     if (!s.doc) { list.appendChild(el('div', 'note', 'Open a design to see its measurements.')); return; }
-    if (!s.rows.length) {
+    if (creating) {
+      list.appendChild(inlineInput('New folder name', '', 'Create',
+        function (v) { creating = false; send('folder_new', { name: v }); },
+        function () { creating = false; render(state); }));
+    }
+    if (!s.rows.length && !s.folders.length) {
       list.appendChild(el('div', 'empty', 'No stored measurements yet. Use + New.'));
     }
-    s.rows.forEach(function (r) {
+    // folders first, in their order, then the measurements outside any folder
+    s.folders.forEach(function (name) {
+      var rows = s.rows.filter(function (r) { return r.folder === name; });
+      folderHeader(s, name, rows, list);
+      if (!collapsed[s.doc + '|' + name]) {
+        rows.forEach(function (r) { renderRow(s, r, list, true); });
+      }
+    });
+    var loose = s.rows.filter(function (r) { return !r.folder || s.folders.indexOf(r.folder) < 0; });
+    if (s.folders.length && (loose.length || dragToken)) {
+      var head = el('div', 'folder loose', 'No folder');
+      head.title = 'Drop a measurement here to take it out of its folder';
+      dropTarget(head, '');
+      list.appendChild(head);
+    }
+    loose.forEach(function (r) { renderRow(s, r, list, false); });
+    send('rendered', { rows: s.rows.length, folders: s.folders.length });     // lets the add-in (and tests) know
+  }
+
+  function renderRow(s, r, list, inFolder) {
       var isSel = s.selected && s.selected === r.token;
-      var row = el('div', 'row' + (r.off ? ' off' : '') + (r.broken ? ' broken' : '') + (isSel ? ' selected' : ''));
+      var row = el('div', 'row' + (r.off ? ' off' : '') + (r.broken ? ' broken' : '') + (isSel ? ' selected' : '')
+                   + (inFolder ? ' in-folder' : ''));
+      row.draggable = true;
+      row.title = 'Drag onto a folder to move it there';
+      row.ondragstart = function (e) {
+        dragToken = r.token; row.classList.add('dragging');
+        try { e.dataTransfer.setData('text/plain', r.token); e.dataTransfer.effectAllowed = 'move'; } catch (x) {}
+      };
+      row.ondragend = function () { dragToken = null; row.classList.remove('dragging'); };
       var formula = r.kind === 'Formula';
       var cb = el('input'); cb.type = 'checkbox'; cb.checked = !!r.shown;
       cb.title = 'Show this measurement in the model';
@@ -116,6 +280,10 @@
                            : 'Edit: change what it measures (lines, points, along) or its name';
       edit.onclick = function () { send('edit', { token: r.token }); };
       tools.appendChild(edit);
+      var mv = el('button', '', '⇄');
+      mv.title = 'Move it to a folder';
+      mv.onclick = function () { moveToken = (moveToken === r.token) ? null : r.token; render(state); };
+      tools.appendChild(mv);
       var place = el('button', '', '✥');
       place.title = 'Place: drag the drawing aside';
       place.disabled = r.off || r.broken || formula;
@@ -131,6 +299,7 @@
       tools.appendChild(del);
       row.appendChild(tools);
       list.appendChild(row);
+      if (moveToken === r.token || moveToken === 'new:' + r.token) { moveMenu(s, r, list); }
       // the selected measurement: what it was made of, as named in the browser; a click
       // selects that item too, so it lights up in the browser and the model
       if (isSel && r.parts && r.parts.length) {
@@ -145,18 +314,17 @@
         });
         list.appendChild(parts);
       }
-    });
-    send('rendered', { rows: s.rows.length });     // lets the add-in (and tests) know
   }
 
   document.getElementById('master').onchange = function (e) {
     send('master', { on: e.target.checked });
   };
   document.getElementById('new').onclick = function () { send('new', {}); };
+  document.getElementById('newfolder').onclick = function () { creating = true; if (state) render(state); };
 
   window.fusionJavaScriptHandler = {
     handle: function (action, data) {
-      if (action === 'update') { sureToken = null; try { render(JSON.parse(data)); } catch (e) {} }
+      if (action === 'update') { sureToken = null; sureFolder = null; try { render(JSON.parse(data)); } catch (e) {} }
       return 'OK';
     }
   };

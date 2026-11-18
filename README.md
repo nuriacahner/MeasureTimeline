@@ -55,7 +55,12 @@ This add-in adds all of that, using the same measuring engine as Inspect → Mea
   - **Place** (move its drawing), **✎ Edit** (change its entities, *Along*, formula,
     name or acute / obtuse, keeping its place in the timeline), **Delete** and **+ New**;
   - Selecting a row lists the entities it was measured between: click one to select it in
-    the design.
+    the design;
+  - **Folders** to group measurements: **+ Folder** makes one; drag a measurement onto a
+    folder, or use its **⇄** button, to move it there. Each folder opens and closes, has a
+    box that shows or hides all its measurements at once, a **+** that stores a new
+    measurement straight into it, and can be renamed or deleted (its measurements are
+    kept, outside any folder). Folders only organise the panel: the timeline is unchanged.
 - **Drawing, 3-matic style:**
   - A distance as an orange line between the two closest points;
   - Its measured entities: planes as translucent green panels, axes and lines in blue,
@@ -94,6 +99,10 @@ No extra Python packages are needed.
   - Formulas are features without dependencies, re-evaluated after every command, so their
     order in the timeline doesn't matter.
   - Editing changes the feature's dependencies in place.
+  - A measurement's folder is stored in its own attribute, and the list of folders (with
+    their order, empty ones included) in an attribute of the design, so both travel with
+    the file. Whether a folder is open or closed is kept by the panel only, so it never
+    marks the design as modified.
 - **Drawing** uses Fusion's custom graphics. A drawing present when a design is saved would
   be stored in that version, and would reappear on every open, out of the API's reach. So
   every drawing is removed just before saving and redrawn just after.
